@@ -364,3 +364,54 @@ body.is-fullscreen .player-container { max-width: none; border-radius: 0; border
     .yt-container { height: 200px; }
     input[type="range"] { touch-action: pan-x; }
 }
+
+/* ===== Paysage compact : tout tient sur un seul écran (téléphone en travers) ===== */
+@media (orientation: landscape) and (max-height: 560px) {
+    html, body { height: 100%; overflow: hidden; }
+    body { display: block; padding: 4px; min-height: 0; }
+    .player-container { height: calc(100dvh - 8px); max-width: none; padding: 6px; gap: 4px; border-radius: 6px; display: grid; grid-template-rows: auto 34px minmax(0, 1fr); }
+    .module { padding: 6px; }
+    .topbar-title { display: none; }
+    .topbar-actions { width: 100%; flex-wrap: nowrap; gap: 4px; }
+    .top-btn { padding: 4px 6px; font-size: 10px; }
+    .analyzer-module { padding: 2px; }
+    #spectrum { height: 30px; }
+
+    .dj-booth { grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) minmax(190px, 24%); grid-template-rows: minmax(0, 1fr); gap: 4px; min-height: 0; }
+    .mixer { order: 0; }
+    .playlist-module { order: 0; grid-column: auto; min-height: 0; }
+    .deck, .mixer, .playlist-module { gap: 4px; overflow: auto; }
+    .deck-header { font-size: 10px; padding-bottom: 2px; letter-spacing: 1px; }
+    .mixer-header { display: none; }
+    .source-inputs { display: none; }
+    .dj-filter, .eq-section { padding: 3px; gap: 2px; }
+    .dj-filter label, .eq-control label, .vol-box label { font-size: 8px; }
+    .meta-info { padding: 4px; gap: 6px; }
+    .meta-info img { width: 34px; height: 34px; }
+    .track-title { font-size: 11px; }
+    .track-time { font-size: 10px; }
+    .play-btn, .icon-btn { padding: 5px 6px; font-size: 10px; }
+    #waveform-a, #waveform-b { max-height: 34px; overflow: hidden; }
+    .yt-container { height: 48px; }
+    .pc-btn { padding: 5px; font-size: 10px; }
+    .mixer-buttons { gap: 4px; }
+    .vol-box { gap: 2px; }
+    #crossfader::-webkit-slider-thumb { width: 18px; height: 26px; }
+
+    .playlist-controls { flex-wrap: wrap; gap: 4px; }
+    .automix-btn { padding: 5px; }
+    .transition-box { width: 100%; font-size: 9px; gap: 4px; }
+    .transition-box input { flex: 1; width: auto; }
+    .playlist-container { flex: 1; min-height: 0; max-height: none; }
+    .playlist-table { font-size: 9px; }
+    .playlist-table th:nth-child(1), .playlist-table td:nth-child(1),
+    .playlist-table th:nth-child(2), .playlist-table td:nth-child(2),
+    .playlist-table th:nth-child(5), .playlist-table td:nth-child(5) { display: none; }
+    .playlist-table td { padding: 3px 4px; }
+    .playlist-action-btn { padding: 3px 5px; }
+}
+
+/* Téléphone en portrait : invitation à tourner l'écran */
+@media (orientation: portrait) and (max-width: 700px) {
+    body::after { content: '🔄 Tourne ton téléphone en mode paysage'; position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; background: #0b0c10; color: #fff; font-size: 18px; font-weight: bold; }
+}

@@ -776,6 +776,7 @@ let autoFullscreen = true;
 function syncFs() {
     const full = !!document.fullscreenElement;
     document.body.classList.toggle('is-fullscreen', full);
+    if (full && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
     fsBtn.innerText = full ? '➖ Réduire' : '⛶ Plein écran';
 }
 document.addEventListener('fullscreenchange', syncFs);
