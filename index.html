@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic DJ Dashboard PRO</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0c10">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <div class="player-container">
+        <!-- Barre du haut : raccourcis et fenêtre -->
+        <div class="topbar">
+            <div class="topbar-title">🪐 GALACTIC DJ</div>
+            <div class="topbar-actions">
+                <a id="ytm-btn" class="top-btn ytm" href="https://music.youtube.com" target="_blank" rel="noopener">▶ YouTube Music</a>
+                <button id="local-btn" class="top-btn local">📁 Mes musiques</button>
+                <input type="file" id="local-files" accept="audio/*" multiple hidden />
+                <button id="fs-btn" class="top-btn">⛶ Plein écran</button>
+                <button id="close-btn" class="top-btn close">✖ Fermer</button>
+            </div>
+        </div>
+
+        <!-- Analyseur de spectre Master en haut -->
+        <div class="module analyzer-module">
+            <canvas id="spectrum" height="120"></canvas>
+        </div>
+
+        <!-- Section DJ Booth principale -->
+        <div class="dj-booth">
+            
+            <!-- PLATINE A -->
+            <div class="module deck deck-a">
+                <div class="deck-header">🎛️ PLATINE A</div>
+                <div class="controls">
+                    <button id="play-a" class="play-btn">▶ Play</button>
+                    <button id="cue-a" class="icon-btn" title="Pause = Placer / Lecture = Sauter">📍 Cue</button>
+                    <button id="loop-a" class="icon-btn" title="Boucle">🔁 Loop</button>
+                </div>
+                
+                <div class="dj-filter">
+                    <label>Filtre (LPF ◀ ▶ HPF)</label>
+                    <input type="range" id="filter-a" min="-100" max="100" value="0">
+                </div>
+
+                <!-- Égaliseur 3 Bandes Platine A -->
+                <div class="eq-section">
+                    <div class="eq-control">
+                        <label>High</label>
+                        <input type="range" id="eq-high-a" min="-40" max="10" step="1" value="0">
+                    </div>
+                    <div class="eq-control">
+                        <label>Mid</label>
+                        <input type="range" id="eq-mid-a" min="-40" max="10" step="1" value="0">
+                    </div>
+                    <div class="eq-control">
+                        <label>Low</label>
+                        <input type="range" id="eq-low-a" min="-40" max="10" step="1" value="0">
+                    </div>
+                </div>
+                
+                <div class="source-inputs">
+                    <input type="file" id="upload-a" accept="audio/*" class="file-input" title="Charger un MP3" />
+                    <div class="yt-control">
+                        <input type="text" id="yt-url-a" placeholder="Lien YouTube A..." />
+                        <button id="load-yt-btn-a" class="icon-btn">YT</button>
+                    </div>
+                </div>
+                
+                <div class="meta-info">
+                    <img id="cover-a" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
+                    <div class="meta-text">
+                        <div id="title-a" class="track-title">Piste A en attente</div>
+                        <div id="time-a" class="track-time">00:00 / 00:00</div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container" id="progress-container-a" onclick="seekTrack('a', event)">
+                    <div id="progress-fill-a" class="progress-fill"></div>
+                </div>
+
+                <div class="media-display-container">
+                    <div id="waveform-a"></div>
+                    <div id="yt-player-container-a" class="yt-container" style="display: none;">
+                        <div id="yt-player-a"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIXER CENTRAL -->
+            <div class="module mixer">
+                <div class="mixer-header">MIXER</div>
+                
+                <div class="vol-box">
+                    <label>Volume Master</label>
+                    <input type="range" id="master-volume" min="0" max="1" step="0.01" value="1">
+                </div>
+                
+                <div class="vol-box crossfader-box">
+                    <label>Crossfader</label>
+                    <input type="range" id="crossfader" min="0" max="1" step="0.01" value="0.5">
+                    <div class="cf-labels"><span>◀ A</span><span>B ▶</span></div>
+                </div>
+
+                <div class="mixer-buttons">
+                    <button id="open-search-btn" class="pc-btn search-btn">🔍 YouTube</button>
+                    <button id="listen-btn" title="Capturer le PC" class="pc-btn">🎧 Mode PC</button>
+                    <button id="record-btn" class="pc-btn record-btn">🔴 REC Mix</button>
+                </div>
+            </div>
+
+            <!-- PLATINE B -->
+            <div class="module deck deck-b">
+                <div class="deck-header">🎛️ PLATINE B</div>
+                <div class="controls">
+                    <button id="play-b" class="play-btn">▶ Play</button>
+                    <button id="cue-b" class="icon-btn" title="Pause = Placer / Lecture = Sauter">📍 Cue</button>
+                    <button id="loop-b" class="icon-btn" title="Boucle">🔁 Loop</button>
+                </div>
+                
+                <div class="dj-filter">
+                    <label>Filtre (LPF ◀ ▶ HPF)</label>
+                    <input type="range" id="filter-b" min="-100" max="100" value="0">
+                </div>
+
+                <!-- Égaliseur 3 Bandes Platine B -->
+                <div class="eq-section">
+                    <div class="eq-control">
+                        <label>High</label>
+                        <input type="range" id="eq-high-b" min="-40" max="10" step="1" value="0">
+                    </div>
+                    <div class="eq-control">
+                        <label>Mid</label>
+                        <input type="range" id="eq-mid-b" min="-40" max="10" step="1" value="0">
+                    </div>
+                    <div class="eq-control">
+                        <label>Low</label>
+                        <input type="range" id="eq-low-b" min="-40" max="10" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="source-inputs">
+                    <input type="file" id="upload-b" accept="audio/*" class="file-input" title="Charger un MP3" />
+                    <div class="yt-control">
+                        <input type="text" id="yt-url-b" placeholder="Lien YouTube B..." />
+                        <button id="load-yt-btn-b" class="icon-btn">YT</button>
+                    </div>
+                </div>
+
+                <div class="meta-info">
+                    <img id="cover-b" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
+                    <div class="meta-text">
+                        <div id="title-b" class="track-title">Piste B en attente</div>
+                        <div id="time-b" class="track-time">00:00 / 00:00</div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container" id="progress-container-b" onclick="seekTrack('b', event)">
+                    <div id="progress-fill-b" class="progress-fill"></div>
+                </div>
+
+                <div class="media-display-container">
+                    <div id="waveform-b"></div>
+                    <div id="yt-player-container-b" class="yt-container" style="display: none;">
+                        <div id="yt-player-b"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FILE D'ATTENTE & AUTOMIX -->
+            <div class="module playlist-module">
+                <div class="deck-header">📂 FILE D'ATTENTE & AUTOMIX</div>
+                <div class="playlist-controls">
+                    <button id="automix-btn" class="pc-btn automix-btn">⚡ Automix : OFF</button>
+                    <label class="transition-box" title="Durée du fondu entre deux morceaux">Transition
+                        <input type="range" id="transition-time" min="1" max="20" step="1" value="6">
+                        <span id="transition-val">6 s</span>
+                    </label>
+                    <button id="clear-playlist-btn" class="icon-btn" onclick="clearPlaylist()">Vider</button>
+                </div>
+                <div id="playlist-container" class="playlist-container">
+                    <div class="playlist-empty">Glisse ou charge des titres ici...</div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Fenêtre pop-up de recherche YouTube -->
+    <div id="yt-search-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔍 Bibliothèque YouTube</h3>
+                <button id="close-modal" class="close-btn">✖</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="yt-search-input" placeholder="Titre, artiste, acapella, instru..." />
+                <button id="yt-search-btn" class="pc-btn search-btn">Chercher</button>
+            </div>
+            <div id="yt-search-results" class="results-container">
+                <div style="text-align:center; padding: 30px; color: #666;">Tapez une recherche ci-dessus...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
