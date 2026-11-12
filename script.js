@@ -737,12 +737,12 @@ function onMIDIMessage(message) {
         }
         if (note === 57) {
             const filterVal = ((velocity / 127) * 200) - 100;
-            document.getElementById('filter-a').value = filterVal;
+            document.getElementById('filter-a').value = filterVal; document.getElementById('filter-a').dispatchEvent(new Event('input'));
             applyDJFilter(filterNodeA, filterVal);
         }
         if (note === 62) {
             const filterVal = ((velocity / 127) * 200) - 100;
-            document.getElementById('filter-b').value = filterVal;
+            document.getElementById('filter-b').value = filterVal; document.getElementById('filter-b').dispatchEvent(new Event('input'));
             applyDJFilter(filterNodeB, filterVal);
         }
     }
@@ -811,3 +811,39 @@ localFiles.addEventListener('change', () => {
 // PWA : installation sur Android + masquage des fonctions non disponibles sur mobile
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) document.getElementById('listen-btn').style.display = 'none';
+
+// Boutons rotatifs (filtre + égaliseur) : double-clic / double-tap = réglage d'origine
+function makeKnob(id, fmt) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    const min = +input.min, max = +input.max, def = +input.defaultValue, step = +input.step || 1;
+    const wrap = document.createElement('div'); wrap.className = 'knob-wrap';
+    wrap.title = 'Glisser ↕ ou molette : régler • Double-clic / double-tap : réglage d\u2019origine';
+    wrap.innerHTML = '<svg viewBox="0 0 40 40" class="knob"><circle class="k-body" cx="20" cy="20" r="17"/><circle class="k-origin" r="1.7"/><line class="k-ind" x1="20" y1="20" x2="20" y2="6"/></svg><span class="knob-val"></span>';
+    input.style.display = 'none'; input.after(wrap);
+    const svg = wrap.querySelector('svg'), ind = wrap.querySelector('.k-ind'), org = wrap.querySelector('.k-origin'), val = wrap.querySelector('.knob-val');
+    const angle = (v) => -135 + 270 * (v - min) / (max - min);
+    const oa = angle(def) * Math.PI / 180;
+    org.setAttribute('cx', 20 + 17 * Math.sin(oa)); org.setAttribute('cy', 20 - 17 * Math.cos(oa));
+    const render = () => { const v = +input.value; ind.setAttribute('transform', `rotate(${angle(v)} 20 20)`); val.textContent = fmt(v); };
+    const set = (v) => {
+        v = Math.round(Math.min(max, Math.max(min, v)) / step) * step;
+        input.value = v; input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    let startY = 0, startV = def, lastTap = 0;
+    svg.addEventListener('pointerdown', (e) => {
+        svg.setPointerCapture(e.pointerId);
+        const now = Date.now(); startY = e.clientY;
+        if (now - lastTap < 350) { set(def); startV = def; lastTap = 0; return; }
+        lastTap = now; startV = +input.value;
+    });
+    svg.addEventListener('pointermove', (e) => {
+        if (svg.hasPointerCapture(e.pointerId)) set(startV + (startY - e.clientY) / (e.shiftKey ? 600 : 150) * (max - min));
+    });
+    svg.addEventListener('wheel', (e) => { e.preventDefault(); set(+input.value + (e.deltaY < 0 ? 1 : -1) * (max - min) / 50); }, { passive: false });
+    svg.addEventListener('dblclick', () => set(def));
+    input.addEventListener('input', render); render();
+}
+const fmtFilter = (v) => v === 0 ? '0' : (v < 0 ? 'LPF ' : 'HPF ') + Math.abs(Math.round(v));
+const fmtEq = (v) => (v > 0 ? '+' : '') + Math.round(v) + ' dB';
+['a', 'b'].forEach(d => { makeKnob(`filter-${d}`, fmtFilter); ['high', 'mid', 'low'].forEach(b => makeKnob(`eq-${b}-${d}`, fmtEq)); });
