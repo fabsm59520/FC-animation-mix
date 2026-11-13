@@ -85,7 +85,7 @@ window.addEventListener('DOMContentLoaded', () => {
         ws.on('finish', () => {
             if (d === 'a' ? isLoopingA : isLoopingB) return;
             const alreadyAdvanced = automixDone[d];
-            ws.pause(); ws.seekTo(0);
+            ws.pause(); ws.seekTo(0); clearLoop(d);
             btn.innerText = '▶ Play';
             document.getElementById(`progress-fill-${d}`).style.width = '0%';
             document.getElementById(`progress-container-${d}`).classList.remove('alert-active');
@@ -174,7 +174,7 @@ function extractYTData(url) {
 }
 
 function loadYoutubeVideo(deckStr, player, forceId = null, forceTitle = null) {
-    initEngine(); automixDone[deckStr] = false;
+    initEngine(); automixDone[deckStr] = false; onTrackLoaded(deckStr, null);
     let videoId = forceId; let listId = null;
     
     if (!videoId) {
@@ -243,7 +243,9 @@ function analyzeLocal(item) {
     if (window.jsmediatags) window.jsmediatags.read(fileObj, { onSuccess: ({ tags }) => {
         if (tags.artist) item.artist = tags.artist; if (tags.title) item.name = tags.title; renderPlaylist();
     }, onError: () => {} });
-    bpmQueue = bpmQueue.then(() => detectBPM(url)).then(b => { item.bpm = b; }, () => { item.bpm = null; }).then(renderPlaylist);
+    const sd = item.sourceData;
+    sd.bpmPromise = bpmQueue = bpmQueue.then(() => detectBPM(url)).catch(() => null);
+    sd.bpmPromise.then(b => { item.bpm = b; sd.bpm = b; renderPlaylist(); });
 }
 function sortPlaylist(key) {
     sortDir = (sortKey === key) ? -sortDir : 1; sortKey = key;
@@ -348,6 +350,7 @@ function loadLocalFileFromAutomix(sourceData, deckStr, wavesurferInstance) {
     document.getElementById(`title-${deckStr}`).innerText = fileName;
     document.getElementById(`cover-${deckStr}`).src = defaultCover;
     readTags(sourceData.fileObj, deckStr);
+    onTrackLoaded(deckStr, sourceData);
 
     wavesurferInstance.load(sourceData.url);
     document.getElementById(`play-${deckStr}`).innerText = '▶ Play';
@@ -847,3 +850,153 @@ function makeKnob(id, fmt) {
 const fmtFilter = (v) => v === 0 ? '0' : (v < 0 ? 'LPF ' : 'HPF ') + Math.abs(Math.round(v));
 const fmtEq = (v) => (v > 0 ? '+' : '') + Math.round(v) + ' dB';
 ['a', 'b'].forEach(d => { makeKnob(`filter-${d}`, fmtFilter); ['high', 'mid', 'low'].forEach(b => makeKnob(`eq-${b}-${d}`, fmtEq)); });
+
+// ===== Outils DJ : pitch, SYNC, hot cues, boucles, jog wheel, écran toujours allumé =====
+const DJ = {
+    a: { src: null, bpm: null, rate: 1, keylock: true, search: false, loop: null, cues: [null, null, null, null], jog: { active: false, vel: 0, playing: false } },
+    b: { src: null, bpm: null, rate: 1, keylock: true, search: false, loop: null, cues: [null, null, null, null], jog: { active: false, vel: 0, playing: false } }
+};
+const byId = (id) => document.getElementById(id);
+const wsOf = (d) => d === 'a' ? wavesurferA : wavesurferB;
+const isLocal = (d) => (d === 'a' ? currentSourceA : currentSourceB) === 'local';
+const needLocal = (d) => { if (isLocal(d) && DJ[d].src) return true; toast('Réservé aux MP3 locaux chargés sur la platine'); return false; };
+const cueKey = (src) => `hotcues:${src.fileObj.name}|${src.fileObj.size}`;
+
+function updateBpmUi(d) { const s = DJ[d]; byId(`bpm-${d}`).textContent = s.bpm ? `${(s.bpm * s.rate).toFixed(1)} BPM` : '— BPM'; }
+function setRate(d, pct) {
+    const s = DJ[d]; s.rate = 1 + pct / 100;
+    if (isLocal(d) && wsOf(d)) wsOf(d).setPlaybackRate(s.rate, s.keylock);
+    byId(`pitch-${d}`).value = pct;
+    byId(`pitch-val-${d}`).textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+    updateBpmUi(d);
+}
+function onTrackLoaded(d, src) {
+    const s = DJ[d]; s.src = src; s.bpm = src && src.bpm ? src.bpm : null; s.loop = null; s.cues = [null, null, null, null];
+    if (src) { try { s.cues = JSON.parse(localStorage.getItem(cueKey(src)) || 'null') || s.cues; } catch (e) {} }
+    setRate(d, 0); renderLoop(d); renderCues(d);
+    if (src) (src.bpmPromise ||= detectBPM(src.url).catch(() => null)).then(b => {
+        if (s.src === src && b) { src.bpm = b; if (!s.bpm) s.bpm = b; updateBpmUi(d); }
+    });
+}
+function scaleBpm(d, f) {
+    const s = DJ[d]; if (!s.bpm) return;
+    s.bpm *= f;
+    if (s.src) { s.src.bpm = s.bpm; const it = playlist.find(i => i.sourceData === s.src); if (it) { it.bpm = Math.round(s.bpm); renderPlaylist(); } }
+    updateBpmUi(d);
+}
+function syncDeck(d) {
+    const s = DJ[d], t = DJ[d === 'a' ? 'b' : 'a'];
+    if (!s.bpm || !t.bpm) return toast('SYNC : BPM inconnu sur une des platines');
+    let r = (t.bpm * t.rate) / s.bpm;
+    if (r > 1.45) r /= 2; else if (r < 0.69) r *= 2;
+    const pct = (r - 1) * 100;
+    if (Math.abs(pct) > 16) return toast(`SYNC impossible : ${pct.toFixed(1)} % dépasse ±16 %`);
+    setRate(d, pct); toast(`SYNC ${d.toUpperCase()} → ${(s.bpm * s.rate).toFixed(1)} BPM`);
+}
+
+// Hot cues
+function renderCues(d) {
+    byId(`pads-${d}`).querySelectorAll('.pad').forEach((b, i) => { const v = DJ[d].cues[i]; b.classList.toggle('set', v != null); b.title = v != null ? formatTime(v) : 'Vide : appuie pour poser un repère'; });
+}
+function hotCue(d, i) {
+    if (!needLocal(d)) return;
+    const s = DJ[d], ws = wsOf(d);
+    if (s.cues[i] == null) { s.cues[i] = ws.getCurrentTime(); localStorage.setItem(cueKey(s.src), JSON.stringify(s.cues)); renderCues(d); toast(`📍 Repère ${i + 1} : ${formatTime(s.cues[i])}`); }
+    else { ws.setTime(s.cues[i]); if (!ws.isPlaying()) ws.play(); }
+}
+// Boucles
+function renderLoop(d) { byId(`loops-${d}`).querySelectorAll('[data-beats]').forEach(b => b.classList.toggle('active', !!DJ[d].loop && +b.dataset.beats === DJ[d].loop.beats)); }
+function clearLoop(d) { DJ[d].loop = null; renderLoop(d); }
+function setLoop(d, beats) {
+    if (!needLocal(d)) return;
+    const s = DJ[d];
+    if (s.loop && s.loop.beats === beats) return clearLoop(d);
+    if (!s.bpm) toast('BPM inconnu : boucle calée sur 120 BPM');
+    const start = wsOf(d).getCurrentTime();
+    s.loop = { beats, start, end: start + beats * 60 / (s.bpm || 120) };
+    renderLoop(d);
+}
+// Jog wheel
+function setupJog(d) {
+    const el = byId(`jog-${d}`), j = DJ[d].jog; let last = 0, lastT = 0;
+    const ang = (e) => { const r = el.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2) * 180 / Math.PI; };
+    el.addEventListener('pointerdown', (e) => {
+        if (!isLocal(d)) return toast('Jog wheel : MP3 locaux uniquement');
+        el.setPointerCapture(e.pointerId); j.active = true; j.vel = 0; last = ang(e); lastT = performance.now(); el.classList.add('touch');
+        const m = wsOf(d).getMediaElement(); j.playing = !m.paused;
+        if (DJ[d].search && j.playing) m.pause();
+    });
+    el.addEventListener('pointermove', (e) => {
+        if (!j.active) return;
+        const a = ang(e), now = performance.now(); let delta = a - last; if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
+        const dt = Math.max(1, now - lastT); last = a; lastT = now;
+        const ws = wsOf(d);
+        if (DJ[d].search || !j.playing) ws.setTime(Math.max(0, Math.min(ws.getDuration(), ws.getCurrentTime() + delta / 360 * 1.8)));
+        else j.vel = j.vel * 0.6 + (delta / dt * 1000) * 0.4;
+    });
+    const end = () => {
+        if (!j.active) return; j.active = false; j.vel = 0; el.classList.remove('touch');
+        const m = wsOf(d).getMediaElement(); m.playbackRate = DJ[d].rate;
+        if (DJ[d].search && j.playing) m.play();
+    };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+}
+
+['a', 'b'].forEach(d => {
+    const s = DJ[d];
+    byId(`pitch-${d}`).addEventListener('input', (e) => setRate(d, parseFloat(e.target.value)));
+    byId(`pitch-${d}`).addEventListener('dblclick', () => setRate(d, 0));
+    byId(`pitch-reset-${d}`).addEventListener('click', () => setRate(d, 0));
+    byId(`sync-${d}`).addEventListener('click', () => syncDeck(d));
+    byId(`keylock-${d}`).addEventListener('click', (e) => {
+        s.keylock = !s.keylock; e.currentTarget.classList.toggle('active', s.keylock);
+        if (isLocal(d)) wsOf(d).setPlaybackRate(s.rate, s.keylock);
+    });
+    byId(`bpmhalf-${d}`).addEventListener('click', () => scaleBpm(d, 0.5));
+    byId(`bpmdouble-${d}`).addEventListener('click', () => scaleBpm(d, 2));
+    byId(`jogmode-${d}`).addEventListener('click', (e) => { s.search = !s.search; e.currentTarget.textContent = s.search ? 'SEARCH' : 'BEND'; });
+    byId(`loops-${d}`).querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (b.dataset.out) clearLoop(d); else setLoop(d, +b.dataset.beats); }));
+    byId(`pads-${d}`).querySelectorAll('.pad').forEach((b, i) => {
+        let timer = null, long = false;
+        b.addEventListener('pointerdown', () => {
+            long = false;
+            timer = setTimeout(() => { long = true; if (s.cues[i] != null && s.src) { s.cues[i] = null; localStorage.setItem(cueKey(s.src), JSON.stringify(s.cues)); renderCues(d); toast(`Repère ${i + 1} effacé`); } }, 600);
+        });
+        b.addEventListener('pointerup', () => { clearTimeout(timer); if (!long) hotCue(d, i); });
+        ['pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => clearTimeout(timer)));
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+    setupJog(d); setRate(d, 0); renderCues(d);
+});
+
+// Boucle d'animation : boucles précises, rotation et freinage de la jog
+(function djTick() {
+    ['a', 'b'].forEach(d => {
+        const ws = wsOf(d), s = DJ[d]; if (!ws) return;
+        const local = isLocal(d), m = local ? ws.getMediaElement() : null;
+        if (m && s.loop && !m.paused && m.currentTime >= s.loop.end) m.currentTime = s.loop.start;
+        if (m && s.jog.active && !s.search && s.jog.playing) {
+            s.jog.vel *= 0.92; m.playbackRate = Math.max(0.1, s.rate * (1 + Math.max(-0.4, Math.min(0.4, s.jog.vel / 1200))));
+        }
+        const rot = document.querySelector(`#jog-${d} .jog-rot`);
+        if (rot && local) rot.setAttribute('transform', `rotate(${(ws.getCurrentTime() * 200) % 360} 50 50)`);
+    });
+    requestAnimationFrame(djTick);
+})();
+
+// Écran toujours allumé
+let wakeLock = null;
+async function keepAwake() {
+    try {
+        if ('wakeLock' in navigator && !wakeLock) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    } catch (e) {}
+}
+document.addEventListener('pointerdown', keepAwake);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+keepAwake();
+
+// Paysage compact : la file d'attente devient un panneau
+byId('queue-btn').addEventListener('click', () => document.body.classList.toggle('show-queue'));
