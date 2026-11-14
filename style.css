@@ -598,3 +598,9 @@ body.show-tools .tools-drawer { transform: none; }
 }
 .midi-row { grid-template-columns: 1fr auto auto auto auto; }
 .midi-last { color: #00c6ff; }
+
+.kb-row { grid-template-columns: 70px 1fr; }
+.kb-row kbd { background: #222; border: 1px solid #555; border-bottom-width: 3px; border-radius: 5px; padding: 3px 8px; text-align: center; font-weight: bold; color: #ff8c00; font-family: Consolas, monospace; text-transform: uppercase; }
+.tools-tabs button { font-size: 10px; padding: 8px 2px; }
+
+pre.midi-last { white-space: pre-wrap; margin: 0; }

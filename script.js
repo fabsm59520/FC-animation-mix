@@ -417,6 +417,7 @@ function playNextInAutomix(fromDeck) {
     setTimeout(() => {
         const playBtn = document.getElementById(`play-${targetDeck}`);
         if (playBtn) playBtn.click();
+        if (window.automixSync) automixSync(targetDeck);
         fadeCrossfaderTo(targetDeck, getTransition() * 1000);
     }, 1000);
 

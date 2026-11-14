@@ -8,12 +8,12 @@ const drawer = $('tools-drawer');
 drawer.innerHTML = `
 <div class="tools-tabs">
   <button data-tab="fx" class="active">FX</button><button data-tab="sampler">Sampler</button>
-  <button data-tab="lib">Biblio</button><button data-tab="midi">MIDI</button>
+  <button data-tab="lib">Biblio</button><button data-tab="midi">MIDI</button><button data-tab="keys">Clavier</button>
   <button id="tools-close" class="tools-x">✖</button>
 </div>
 <div class="tools-body">
   <section id="tab-fx"></section><section id="tab-sampler" hidden></section>
-  <section id="tab-lib" hidden></section><section id="tab-midi" hidden></section>
+  <section id="tab-lib" hidden></section><section id="tab-midi" hidden></section><section id="tab-keys" hidden></section>
 </div>`;
 drawer.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
     drawer.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === b));
@@ -171,6 +171,8 @@ for (let i = 0; i < 8; i++) ACTIONS.push([`pad-${i}`, `Pad sampler ${i + 1}`, 'b
 let midiMap = {}, midiMode = {};
 try { midiMap = JSON.parse(localStorage.getItem('midi_map') || '{}'); midiMode = JSON.parse(localStorage.getItem('midi_mode') || '{}'); } catch (e) {}
 let learning = null;
+const midiLog = [], lastFire = {};
+const NATIVE_N = { 22: 'play-a', 21: 'cue-a', 48: 'play-b', 47: 'cue-b' }, NATIVE_C = { 58: 'xfader', 55: 'master', 57: 'filter-a', 62: 'filter-b' };
 const saveMap = () => { localStorage.setItem('midi_map', JSON.stringify(midiMap)); localStorage.setItem('midi_mode', JSON.stringify(midiMode)); };
 const modeOf = (id) => midiMode[id] || (id.startsWith('pitch') ? 'rel' : 'abs');
 const fmtKey = (k) => { const m = /^([nc])(\d*):(\d+)$/.exec(k); return m ? `${m[1] === 'n' ? 'Note' : 'CC'} ${m[3]}${m[2] !== '' ? ' · canal ' + (+m[2] + 1) : ''}` : k; };
@@ -178,7 +180,7 @@ const fmtKey = (k) => { const m = /^([nc])(\d*):(\d+)$/.exec(k); return m ? `${m
 const relDelta = (v) => (v >= 1 && v <= 15) ? v : (v >= 113 && v <= 127) ? v - 128 : (v >= 65 && v <= 79) ? v - 64 : (v >= 49 && v <= 63) ? v - 64 : 0;
 function renderMidi() {
     const sec = $('tab-midi');
-    sec.innerHTML = '<p class="hint" id="midi-status"></p><p class="hint midi-last" id="midi-last">Dernier message : —</p><div id="midi-list"></div><button id="midi-clear" class="mini-btn">Tout effacer</button>';
+    sec.innerHTML = '<p class="hint" id="midi-status"></p><pre class="hint midi-last" id="midi-last">Derniers messages : —</pre><div id="midi-list"></div><button id="midi-clear" class="mini-btn">Tout effacer</button>';
     $('midi-status').textContent = navigator.requestMIDIAccess ? 'Clique « Apprendre », puis appuie sur le bouton ou bouge le potentiomètre de ton contrôleur. Pour un pitch qui envoie des impulsions (+1 / −1), garde le mode REL.' : 'MIDI non disponible dans ce navigateur.';
     const list = $('midi-list');
     ACTIONS.forEach(([id, label, kind]) => {
@@ -198,15 +200,20 @@ window.midiIntercept = (e) => {
     const [st, d1, d2 = 0] = e.data, type = st & 0xF0, ch = st & 0x0F;
     if (type !== 0x90 && type !== 0x80 && type !== 0xB0) return false;
     const isNote = type !== 0xB0, key = `${isNote ? 'n' : 'c'}${ch}:${d1}`, pressed = isNote ? (type === 0x90 && d2 > 0) : d2 > 63;
-    const last = $('midi-last'); if (last) last.textContent = `Dernier message : ${fmtKey(key)} · valeur ${d2}`;
+    midiLog.unshift(`${fmtKey(key)} · valeur ${d2}`); midiLog.length = Math.min(midiLog.length, 6);
+    const last = $('midi-last'); if (last) last.textContent = 'Derniers messages :\n' + midiLog.join('\n');
     if (learning) {
         if (isNote && !pressed) return true;
         Object.keys(midiMap).forEach(k => { if (midiMap[k] === learning) delete midiMap[k]; });
         midiMap[key] = learning; saveMap(); toast(`MIDI : ${fmtKey(key)} assigné`); learning = null; renderMidi(); return true;
     }
     const id = midiMap[key] || midiMap[`${isNote ? 'n' : 'c'}:${d1}`], act = ACTIONS.find(a => a[0] === id);
-    if (!act) return false;
-    if (act[2] === 'b') { if (pressed) act[3](); }
+    // Pas d'assignation sur cette touche : l'ancien mappage fixe est neutralisé si la commande a été apprise ailleurs
+    if (!act) { const nat = (isNote ? NATIVE_N : NATIVE_C)[d1]; return !!(nat && Object.values(midiMap).includes(nat)); }
+    if (act[2] === 'b') {
+        // Anti-doublon : certains contrôleurs envoient le même message deux fois (deux ports, ou appui + relâchement)
+        if (pressed) { const now = performance.now(); if (now - (lastFire[id] || 0) > 150) { lastFire[id] = now; act[3](); } }
+    }
     else if (modeOf(id) === 'rel' && act[4]) { const n = relDelta(d2); if (n) act[4](n); }
     else act[3](d2 / 127);
     return true;
@@ -343,4 +350,55 @@ DECKS.forEach(d => {
     });
     ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { on = false; }));
 });
+
+// ---------- AUTOMIX : option « caler le BPM » ----------
+(() => {
+    const lab = document.createElement('label'); lab.className = 'transition-box'; lab.title = 'La platine entrante prend le tempo de la platine sortante (MP3 locaux)';
+    lab.innerHTML = '<input type="checkbox" id="automix-sync"> Sync BPM à chaque transition';
+    const cb = lab.querySelector('input'); cb.checked = localStorage.getItem('automix_sync') === '1';
+    cb.addEventListener('change', () => localStorage.setItem('automix_sync', cb.checked ? '1' : '0'));
+    document.querySelector('.playlist-controls').appendChild(lab);
+    window.automixSync = (d) => {
+        if (!cb.checked) return;
+        const other = d === 'a' ? 'b' : 'a'; let tries = 0;
+        (function attempt() {
+            if (DJ[d].bpm && DJ[other].bpm) return syncDeck(d);
+            if (++tries < 12) setTimeout(attempt, 500); // le BPM peut encore être en cours de calcul
+        })();
+    };
+})();
+
+// ---------- RACCOURCIS CLAVIER (positions physiques : valables en AZERTY comme en QWERTY) ----------
+(() => {
+    const SHORT = {
+        KeyQ: ['Play A', () => $('play-a').click()], KeyW: ['Cue A', () => $('cue-a').click()], KeyE: ['Sync A', () => syncDeck('a')],
+        KeyI: ['Play B', () => $('play-b').click()], KeyO: ['Cue B', () => $('cue-b').click()], KeyP: ['Sync B', () => syncDeck('b')],
+        KeyZ: ['Repère 1 A', () => hotCue('a', 0)], KeyX: ['Repère 2 A', () => hotCue('a', 1)], KeyC: ['Repère 3 A', () => hotCue('a', 2)], KeyV: ['Repère 4 A', () => hotCue('a', 3)],
+        KeyN: ['Repère 1 B', () => hotCue('b', 0)], KeyM: ['Repère 2 B', () => hotCue('b', 1)], Comma: ['Repère 3 B', () => hotCue('b', 2)], Period: ['Repère 4 B', () => hotCue('b', 3)],
+        KeyA: ['Boucle 4 temps A', () => setLoop('a', 4)], KeyL: ['Boucle 4 temps B', () => setLoop('b', 4)],
+        KeyF: ['FX ON / OFF', () => window.toggleFx()],
+        ArrowLeft: ['Crossfader ◀', () => setSlider('crossfader', +$('crossfader').value - 0.05)], ArrowRight: ['Crossfader ▶', () => setSlider('crossfader', +$('crossfader').value + 0.05)],
+        ArrowUp: ['Volume +', () => setSlider('master-volume', +$('master-volume').value + 0.05)], ArrowDown: ['Volume −', () => setSlider('master-volume', +$('master-volume').value - 0.05)]
+    };
+    const REPEAT_OK = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+    document.addEventListener('keydown', (e) => {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'range') return;
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        const s = SHORT[e.code]; if (!s || (e.repeat && !REPEAT_OK.has(e.code))) return;
+        e.preventDefault(); s[1]();
+    });
+    const sec = $('tab-keys');
+    sec.innerHTML = '<p class="hint">Les touches suivent la position sur le clavier : le libellé affiché est celui de ton clavier.</p><div id="kb-list"></div>';
+    const draw = (layout) => {
+        const list = $('kb-list'); list.textContent = '';
+        Object.entries(SHORT).forEach(([code, [label]]) => {
+            const row = document.createElement('div'); row.className = 'midi-row kb-row';
+            const k = document.createElement('kbd'); k.textContent = (layout && layout.get(code)) || code.replace('Key', '').replace('Arrow', '→ ').replace('Comma', ',').replace('Period', '.');
+            const n = document.createElement('span'); n.textContent = label; row.append(k, n); list.appendChild(row);
+        });
+        const row = document.createElement('div'); row.className = 'midi-row kb-row'; row.innerHTML = '<kbd>1 – 8</kbd><span>Pads du sampler</span>'; list.appendChild(row);
+    };
+    draw(null);
+    if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keyboard.getLayoutMap().then(draw).catch(() => {});
+})();
 })();
