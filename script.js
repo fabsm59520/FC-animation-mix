@@ -753,6 +753,7 @@ function onMIDIFailure() {
 }
 
 function onMIDIMessage(message) {
+    if (window.midiIntercept && midiIntercept(message)) return;
     const command = message.data[0];
     const note = message.data[1];
     const velocity = (message.data.length > 2) ? message.data[2] : 0;
@@ -890,7 +891,7 @@ const isLocal = (d) => (d === 'a' ? currentSourceA : currentSourceB) === 'local'
 const needLocal = (d) => { if (isLocal(d) && DJ[d].src) return true; toast('Réservé aux MP3 locaux chargés sur la platine'); return false; };
 const cueKey = (src) => `hotcues:${src.fileObj.name}|${src.fileObj.size}`;
 
-function updateBpmUi(d) { const s = DJ[d]; byId(`bpm-${d}`).textContent = s.bpm ? `${(s.bpm * s.rate).toFixed(1)} BPM` : '— BPM'; }
+function updateBpmUi(d) { const s = DJ[d]; byId(`bpm-${d}`).innerHTML = s.bpm ? `<b>${(s.bpm * s.rate).toFixed(1)}</b><small>BPM</small>` : '<b>--.-</b><small>BPM</small>'; }
 function setRate(d, pct) {
     const s = DJ[d]; s.rate = 1 + pct / 100;
     if (isLocal(d) && wsOf(d)) wsOf(d).setPlaybackRate(s.rate, s.keylock);

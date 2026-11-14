@@ -517,3 +517,84 @@ body.show-tools .tools-drawer { transform: none; }
 .lib-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-meta { color: #00c6ff; font-size: 10px; white-space: nowrap; }
 .playlist-controls .lib-search { flex-basis: 100%; }
+
+/* ===== Look pro : platines réorganisées ===== */
+.deck { background: linear-gradient(180deg, #23232b 0%, #16161b 100%); gap: 10px; border-radius: 10px; }
+.deck-top { display: flex; align-items: center; gap: 10px; }
+.deck-id { width: 46px; height: 46px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #000; background: var(--c); border-radius: 8px; box-shadow: 0 0 16px var(--c); }
+.deck-top .meta-info { flex: 1; min-width: 0; background: #0e0e12; border-left-width: 3px; }
+.deck-a .meta-info { border-left-color: #ff007f; } .deck-b .meta-info { border-left-color: #00c6ff; }
+.deck-a .progress-fill { background: linear-gradient(90deg, #ff007f, #b30059); } .deck-b .progress-fill { background: linear-gradient(90deg, #00c6ff, #0072ff); }
+
+.controls { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 6px; }
+.play-btn { padding: 12px; font-size: 14px; letter-spacing: 1px; }
+.controls .icon-btn { padding: 10px 6px; }
+.sync-btn { color: var(--c); border-color: var(--c); }
+
+.deck-main { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; background: #0e0e12; border: 1px solid #2a2a33; border-radius: 10px; padding: 10px; box-shadow: inset 0 2px 12px rgba(0,0,0,0.7); }
+.jog-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.jog { width: 124px; height: 124px; }
+.jog .j-body { fill: radial-gradient(circle, #1d1d24, #101014); fill: #15151a; stroke-width: 4; }
+.jog .j-ticks { fill: none; stroke: #3a3a46; stroke-width: 4; stroke-dasharray: 1.2 5.5; }
+.jog .j-hub { fill: #25252d; stroke: var(--c, #00c6ff); stroke-width: 2; }
+.bpm-lcd { background: #050507; border: 1px solid #2a2a33; border-radius: 6px; padding: 3px 12px; min-width: 112px; text-align: center; box-shadow: inset 0 0 10px #000; }
+.bpm-val { font-family: Consolas, 'Courier New', monospace; color: var(--c, #00c6ff); white-space: nowrap; text-shadow: 0 0 8px var(--c, #00c6ff); }
+.bpm-val b { font-size: 24px; letter-spacing: 1px; }
+.bpm-val small { font-size: 9px; margin-left: 4px; color: #888; text-shadow: none; }
+.bpm-fix { display: flex; gap: 4px; } .bpm-fix .mini-btn { padding: 4px 8px; }
+
+.knob-bank { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: start; }
+.knob-bank .eq-control { gap: 4px; }
+.knob-bank .eq-control label { font-size: 10px; color: #bbb; letter-spacing: 1px; }
+.knob-bank .knob { width: 52px; height: 52px; }
+.knob-bank .knob-val { font-size: 10px; }
+
+.pitch-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pitch-lbl { font-size: 9px; font-weight: bold; color: #777; }
+.pitch-slot { position: relative; height: 140px; width: 38px; display: flex; justify-content: center; }
+.pitch-slot::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 50%; width: 8px; margin-left: -4px; background: #050507; border: 1px solid #333; border-radius: 4px; }
+.pitch-slot::after { content: ''; position: absolute; top: 50%; left: 2px; right: 2px; height: 2px; margin-top: -1px; background: #555; }
+.pitch-slot input[type="range"] { position: relative; z-index: 1; appearance: none; -webkit-appearance: none; writing-mode: vertical-lr; direction: rtl; width: 38px; height: 140px; margin: 0; background: transparent; }
+.pitch-slot input[type="range"]::-webkit-slider-runnable-track { background: transparent; }
+.pitch-slot input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 18px; border-radius: 3px; background: linear-gradient(#f2f2f2, #aaa); border-bottom: 3px solid var(--c); box-shadow: 0 2px 6px rgba(0,0,0,0.8); cursor: grab; }
+.pitch-slot input[type="range"]::-moz-range-track { background: transparent; }
+.pitch-slot input[type="range"]::-moz-range-thumb { width: 32px; height: 18px; border-radius: 3px; background: linear-gradient(#f2f2f2, #aaa); border: none; border-bottom: 3px solid var(--c); }
+.pitch-val { font-family: Consolas, 'Courier New', monospace; min-width: 0; font-size: 12px; text-align: center; }
+.pitch-btns { display: flex; gap: 4px; }
+.pitch-btns .mini-btn { padding: 4px 8px; }
+
+.deck-pads { display: flex; flex-direction: column; gap: 6px; }
+.pad { height: 38px; font-size: 13px; border-radius: 6px; }
+.pad.set { box-shadow: 0 0 12px var(--c); }
+.loop-row .mini-btn { padding: 7px 4px; font-size: 11px; }
+
+.mixer { background: linear-gradient(180deg, #1c1c22, #121216); }
+.mixer-header { color: #ff8c00; letter-spacing: 3px; }
+.vol-box input[type="range"] { accent-color: #ff8c00; }
+
+/* Paysage compact : nouvelle organisation */
+@media (orientation: landscape) and (max-height: 560px) {
+    .deck > .deck-top { grid-column: 1; }
+    .deck > .deck-main { grid-column: 2; grid-row: 1 / span 3; }
+    .deck > .deck-pads { grid-column: 2; grid-row: 4 / span 2; }
+    .deck-id { width: 28px; height: 28px; font-size: 16px; }
+    .deck-main { padding: 4px; gap: 4px; }
+    .jog { width: 54px; height: 54px; }
+    .bpm-lcd { min-width: 0; padding: 1px 4px; }
+    .bpm-val b { font-size: 13px; } .bpm-val small { font-size: 7px; }
+    .bpm-fix { gap: 2px; } .bpm-fix .mini-btn { padding: 2px 4px; font-size: 8px; }
+    .knob-bank { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
+    .knob-bank .knob { width: 26px; height: 26px; }
+    .knob-bank .eq-control label { font-size: 7px; }
+    .knob-bank .knob-val { font-size: 7px; }
+    .pitch-slot, .pitch-slot input[type="range"] { height: 84px; width: 26px; }
+    .pitch-slot input[type="range"]::-webkit-slider-thumb { width: 22px; height: 12px; }
+    .pitch-lbl { font-size: 7px; } .pitch-val { font-size: 8px; }
+    .pitch-btns .mini-btn { padding: 2px 5px; font-size: 8px; }
+    .controls { gap: 3px; } .play-btn { padding: 6px 4px; font-size: 11px; } .controls .icon-btn { padding: 6px 2px; font-size: 9px; }
+    .pad { height: 24px; font-size: 10px; }
+    .loop-row .mini-btn { padding: 3px 2px; font-size: 9px; }
+    .deck-pads { gap: 3px; }
+}
+.midi-row { grid-template-columns: 1fr auto auto auto auto; }
+.midi-last { color: #00c6ff; }

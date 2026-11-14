@@ -35,61 +35,58 @@
             
             <!-- PLATINE A -->
             <div class="module deck deck-a">
-                <div class="deck-header">🎛️ PLATINE A</div>
+                <div class="deck-top">
+                    <div class="deck-id">A</div>
+                    <div class="meta-info">
+                        <img id="cover-a" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
+                        <div class="meta-text">
+                            <div id="title-a" class="track-title">Piste A en attente</div>
+                            <div id="time-a" class="track-time">00:00 / 00:00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container" id="progress-container-a" onclick="seekTrack('a', event)">
+                    <div id="progress-fill-a" class="progress-fill"></div>
+                </div>
+                <div class="wf-row"><canvas id="wf-a" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-a" class="vu" width="10" height="44"></canvas></div>
+                <div class="media-display-container">
+                    <div id="waveform-a"></div>
+                    <div id="yt-player-container-a" class="yt-container" style="display: none;">
+                        <div id="yt-player-a"></div>
+                    </div>
+                </div>
+
                 <div class="controls">
                     <button id="play-a" class="play-btn">▶ Play</button>
                     <button id="cue-a" class="icon-btn" title="Pause = Placer / Lecture = Sauter">📍 Cue</button>
-                    <button id="loop-a" class="icon-btn" title="Boucle">🔁 Loop</button>
-                </div>
-                
-                <div class="dj-filter">
-                    <label>Filtre (LPF ◀ ▶ HPF)</label>
-                    <input type="range" id="filter-a" min="-100" max="100" value="0">
+                    <button id="loop-a" class="icon-btn" title="Boucle du morceau">🔁 Loop</button>
+                    <button id="sync-a" class="icon-btn sync-btn" title="Caler le tempo sur l'autre platine">SYNC</button>
                 </div>
 
-                <!-- Égaliseur 3 Bandes Platine A -->
-                <div class="eq-section">
-                    <div class="eq-control">
-                        <label>High</label>
-                        <input type="range" id="eq-high-a" min="-40" max="10" step="1" value="0">
+                <div class="deck-main">
+                    <div class="jog-col">
+                        <div class="jog" id="jog-a" title="Glisser en rond : freiner / accélérer (BEND) ou se déplacer dans le morceau (SEARCH)">
+                            <svg viewBox="0 0 100 100"><circle class="j-body" cx="50" cy="50" r="46"/><circle class="j-ticks" cx="50" cy="50" r="38"/><g class="jog-rot"><line class="j-mark" x1="50" y1="9" x2="50" y2="22"/></g><circle class="j-hub" cx="50" cy="50" r="10"/></svg>
+                        </div>
+                        <div class="bpm-lcd"><span id="bpm-a" class="bpm-val"><b>--.-</b><small>BPM</small></span></div>
+                        <div class="bpm-fix">
+                            <button id="bpmhalf-a" class="mini-btn" title="BPM ÷ 2">½</button><button id="bpmdouble-a" class="mini-btn" title="BPM × 2">×2</button><button id="jogmode-a" class="mini-btn" title="Mode de la jog wheel">BEND</button>
+                        </div>
                     </div>
-                    <div class="eq-control">
-                        <label>Mid</label>
-                        <input type="range" id="eq-mid-a" min="-40" max="10" step="1" value="0">
-                    </div>
-                    <div class="eq-control">
-                        <label>Low</label>
-                        <input type="range" id="eq-low-a" min="-40" max="10" step="1" value="0">
+                    <div class="knob-bank"><div class="eq-control"><label>Filtre</label><input type="range" id="filter-a" min="-100" max="100" value="0"></div><div class="eq-control"><label>High</label><input type="range" id="eq-high-a" min="-40" max="10" step="1" value="0"></div><div class="eq-control"><label>Mid</label><input type="range" id="eq-mid-a" min="-40" max="10" step="1" value="0"></div><div class="eq-control"><label>Low</label><input type="range" id="eq-low-a" min="-40" max="10" step="1" value="0"></div></div>
+                    <div class="pitch-col">
+                        <span class="pitch-lbl">+16</span>
+                        <div class="pitch-slot"><input type="range" id="pitch-a" min="-16" max="16" step="0.1" value="0" title="Pitch (double-clic : 0)"></div>
+                        <span class="pitch-lbl">−16</span>
+                        <span id="pitch-val-a" class="pitch-val">0.0%</span>
+                        <div class="pitch-btns"><button id="pitch-reset-a" class="mini-btn" title="Pitch à 0">↺</button><button id="keylock-a" class="mini-btn active" title="Garder la tonalité quand le tempo change">🔒</button></div>
                     </div>
                 </div>
-                
-                <!-- Outils DJ Platine A : jog, pitch, sync, hot cues, boucles -->
-                <div class="pro-section">
-                    <div class="jog-row">
-                        <div class="jog" id="jog-a" title="Glisser en rond : freiner / accélérer (BEND) ou se déplacer dans le morceau (SEARCH)">
-                            <svg viewBox="0 0 100 100"><circle class="j-body" cx="50" cy="50" r="46"/><g class="jog-rot"><line class="j-mark" x1="50" y1="10" x2="50" y2="24"/></g><circle cx="50" cy="50" r="8" fill="#333"/></svg>
-                        </div>
-                        <div class="jog-side">
-                            <span id="bpm-a" class="bpm-val">— BPM</span>
-                            <div class="bpm-fix"><button id="bpmhalf-a" class="mini-btn" title="BPM ÷ 2">½</button><button id="bpmdouble-a" class="mini-btn" title="BPM × 2">×2</button></div>
-                            <button id="jogmode-a" class="mini-btn" title="Mode de la jog wheel">BEND</button>
-                        </div>
-                    </div>
-                    <div class="pitch-row">
-                        <input type="range" id="pitch-a" min="-16" max="16" step="0.1" value="0" title="Pitch (double-clic : 0)">
-                        <span id="pitch-val-a" class="pitch-val">0.0%</span>
-                        <button id="pitch-reset-a" class="mini-btn" title="Pitch à 0">↺</button>
-                    </div>
-                    <div class="sync-row">
-                        <button id="sync-a" class="mini-btn sync" title="Caler le tempo sur l'autre platine">SYNC</button>
-                        <button id="keylock-a" class="mini-btn active" title="Garder la tonalité quand le tempo change">🔒 Tonalité</button>
-                    </div>
-                    <div class="cue-pads" id="pads-a" title="Appui : poser / sauter • Appui long : effacer">
-                        <button class="pad">1</button><button class="pad">2</button><button class="pad">3</button><button class="pad">4</button>
-                    </div>
-                    <div class="loop-row" id="loops-a">
-                        <button class="mini-btn" data-beats="1">1</button><button class="mini-btn" data-beats="2">2</button><button class="mini-btn" data-beats="4">4</button><button class="mini-btn" data-beats="8">8</button><button class="mini-btn" data-out="1">OUT</button>
-                    </div>
+
+                <div class="deck-pads">
+                    <div class="cue-pads" id="pads-a" title="Appui : poser / sauter • Appui long : effacer"><button class="pad">1</button><button class="pad">2</button><button class="pad">3</button><button class="pad">4</button></div>
+                    <div class="loop-row" id="loops-a"><button class="mini-btn" data-beats="1">1</button><button class="mini-btn" data-beats="2">2</button><button class="mini-btn" data-beats="4">4</button><button class="mini-btn" data-beats="8">8</button><button class="mini-btn" data-out="1">OUT</button></div>
                 </div>
 
                 <div class="source-inputs">
@@ -97,26 +94,6 @@
                     <div class="yt-control">
                         <input type="text" id="yt-url-a" placeholder="Lien YouTube A..." />
                         <button id="load-yt-btn-a" class="icon-btn">YT</button>
-                    </div>
-                </div>
-                
-                <div class="meta-info">
-                    <img id="cover-a" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
-                    <div class="meta-text">
-                        <div id="title-a" class="track-title">Piste A en attente</div>
-                        <div id="time-a" class="track-time">00:00 / 00:00</div>
-                    </div>
-                </div>
-
-                <div class="progress-bar-container" id="progress-container-a" onclick="seekTrack('a', event)">
-                    <div id="progress-fill-a" class="progress-fill"></div>
-                </div>
-
-                <div class="wf-row"><canvas id="wf-a" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-a" class="vu" width="10" height="44"></canvas></div>
-                <div class="media-display-container" >
-                    <div id="waveform-a"></div>
-                    <div id="yt-player-container-a" class="yt-container" style="display: none;">
-                        <div id="yt-player-a"></div>
                     </div>
                 </div>
             </div>
@@ -145,61 +122,58 @@
 
             <!-- PLATINE B -->
             <div class="module deck deck-b">
-                <div class="deck-header">🎛️ PLATINE B</div>
+                <div class="deck-top">
+                    <div class="deck-id">B</div>
+                    <div class="meta-info">
+                        <img id="cover-b" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
+                        <div class="meta-text">
+                            <div id="title-b" class="track-title">Piste B en attente</div>
+                            <div id="time-b" class="track-time">00:00 / 00:00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container" id="progress-container-b" onclick="seekTrack('b', event)">
+                    <div id="progress-fill-b" class="progress-fill"></div>
+                </div>
+                <div class="wf-row"><canvas id="wf-b" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-b" class="vu" width="10" height="44"></canvas></div>
+                <div class="media-display-container">
+                    <div id="waveform-b"></div>
+                    <div id="yt-player-container-b" class="yt-container" style="display: none;">
+                        <div id="yt-player-b"></div>
+                    </div>
+                </div>
+
                 <div class="controls">
                     <button id="play-b" class="play-btn">▶ Play</button>
                     <button id="cue-b" class="icon-btn" title="Pause = Placer / Lecture = Sauter">📍 Cue</button>
-                    <button id="loop-b" class="icon-btn" title="Boucle">🔁 Loop</button>
-                </div>
-                
-                <div class="dj-filter">
-                    <label>Filtre (LPF ◀ ▶ HPF)</label>
-                    <input type="range" id="filter-b" min="-100" max="100" value="0">
+                    <button id="loop-b" class="icon-btn" title="Boucle du morceau">🔁 Loop</button>
+                    <button id="sync-b" class="icon-btn sync-btn" title="Caler le tempo sur l'autre platine">SYNC</button>
                 </div>
 
-                <!-- Égaliseur 3 Bandes Platine B -->
-                <div class="eq-section">
-                    <div class="eq-control">
-                        <label>High</label>
-                        <input type="range" id="eq-high-b" min="-40" max="10" step="1" value="0">
-                    </div>
-                    <div class="eq-control">
-                        <label>Mid</label>
-                        <input type="range" id="eq-mid-b" min="-40" max="10" step="1" value="0">
-                    </div>
-                    <div class="eq-control">
-                        <label>Low</label>
-                        <input type="range" id="eq-low-b" min="-40" max="10" step="1" value="0">
-                    </div>
-                </div>
-
-                <!-- Outils DJ Platine B : jog, pitch, sync, hot cues, boucles -->
-                <div class="pro-section">
-                    <div class="jog-row">
+                <div class="deck-main">
+                    <div class="jog-col">
                         <div class="jog" id="jog-b" title="Glisser en rond : freiner / accélérer (BEND) ou se déplacer dans le morceau (SEARCH)">
-                            <svg viewBox="0 0 100 100"><circle class="j-body" cx="50" cy="50" r="46"/><g class="jog-rot"><line class="j-mark" x1="50" y1="10" x2="50" y2="24"/></g><circle cx="50" cy="50" r="8" fill="#333"/></svg>
+                            <svg viewBox="0 0 100 100"><circle class="j-body" cx="50" cy="50" r="46"/><circle class="j-ticks" cx="50" cy="50" r="38"/><g class="jog-rot"><line class="j-mark" x1="50" y1="9" x2="50" y2="22"/></g><circle class="j-hub" cx="50" cy="50" r="10"/></svg>
                         </div>
-                        <div class="jog-side">
-                            <span id="bpm-b" class="bpm-val">— BPM</span>
-                            <div class="bpm-fix"><button id="bpmhalf-b" class="mini-btn" title="BPM ÷ 2">½</button><button id="bpmdouble-b" class="mini-btn" title="BPM × 2">×2</button></div>
-                            <button id="jogmode-b" class="mini-btn" title="Mode de la jog wheel">BEND</button>
+                        <div class="bpm-lcd"><span id="bpm-b" class="bpm-val"><b>--.-</b><small>BPM</small></span></div>
+                        <div class="bpm-fix">
+                            <button id="bpmhalf-b" class="mini-btn" title="BPM ÷ 2">½</button><button id="bpmdouble-b" class="mini-btn" title="BPM × 2">×2</button><button id="jogmode-b" class="mini-btn" title="Mode de la jog wheel">BEND</button>
                         </div>
                     </div>
-                    <div class="pitch-row">
-                        <input type="range" id="pitch-b" min="-16" max="16" step="0.1" value="0" title="Pitch (double-clic : 0)">
+                    <div class="knob-bank"><div class="eq-control"><label>Filtre</label><input type="range" id="filter-b" min="-100" max="100" value="0"></div><div class="eq-control"><label>High</label><input type="range" id="eq-high-b" min="-40" max="10" step="1" value="0"></div><div class="eq-control"><label>Mid</label><input type="range" id="eq-mid-b" min="-40" max="10" step="1" value="0"></div><div class="eq-control"><label>Low</label><input type="range" id="eq-low-b" min="-40" max="10" step="1" value="0"></div></div>
+                    <div class="pitch-col">
+                        <span class="pitch-lbl">+16</span>
+                        <div class="pitch-slot"><input type="range" id="pitch-b" min="-16" max="16" step="0.1" value="0" title="Pitch (double-clic : 0)"></div>
+                        <span class="pitch-lbl">−16</span>
                         <span id="pitch-val-b" class="pitch-val">0.0%</span>
-                        <button id="pitch-reset-b" class="mini-btn" title="Pitch à 0">↺</button>
+                        <div class="pitch-btns"><button id="pitch-reset-b" class="mini-btn" title="Pitch à 0">↺</button><button id="keylock-b" class="mini-btn active" title="Garder la tonalité quand le tempo change">🔒</button></div>
                     </div>
-                    <div class="sync-row">
-                        <button id="sync-b" class="mini-btn sync" title="Caler le tempo sur l'autre platine">SYNC</button>
-                        <button id="keylock-b" class="mini-btn active" title="Garder la tonalité quand le tempo change">🔒 Tonalité</button>
-                    </div>
-                    <div class="cue-pads" id="pads-b" title="Appui : poser / sauter • Appui long : effacer">
-                        <button class="pad">1</button><button class="pad">2</button><button class="pad">3</button><button class="pad">4</button>
-                    </div>
-                    <div class="loop-row" id="loops-b">
-                        <button class="mini-btn" data-beats="1">1</button><button class="mini-btn" data-beats="2">2</button><button class="mini-btn" data-beats="4">4</button><button class="mini-btn" data-beats="8">8</button><button class="mini-btn" data-out="1">OUT</button>
-                    </div>
+                </div>
+
+                <div class="deck-pads">
+                    <div class="cue-pads" id="pads-b" title="Appui : poser / sauter • Appui long : effacer"><button class="pad">1</button><button class="pad">2</button><button class="pad">3</button><button class="pad">4</button></div>
+                    <div class="loop-row" id="loops-b"><button class="mini-btn" data-beats="1">1</button><button class="mini-btn" data-beats="2">2</button><button class="mini-btn" data-beats="4">4</button><button class="mini-btn" data-beats="8">8</button><button class="mini-btn" data-out="1">OUT</button></div>
                 </div>
 
                 <div class="source-inputs">
@@ -209,28 +183,8 @@
                         <button id="load-yt-btn-b" class="icon-btn">YT</button>
                     </div>
                 </div>
-
-                <div class="meta-info">
-                    <img id="cover-b" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='50' height='50' fill='%231e1e24'/></svg>" alt="Cover" />
-                    <div class="meta-text">
-                        <div id="title-b" class="track-title">Piste B en attente</div>
-                        <div id="time-b" class="track-time">00:00 / 00:00</div>
-                    </div>
-                </div>
-
-                <div class="progress-bar-container" id="progress-container-b" onclick="seekTrack('b', event)">
-                    <div id="progress-fill-b" class="progress-fill"></div>
-                </div>
-
-                <div class="wf-row"><canvas id="wf-b" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-b" class="vu" width="10" height="44"></canvas></div>
-                <div class="media-display-container" >
-                    <div id="waveform-b"></div>
-                    <div id="yt-player-container-b" class="yt-container" style="display: none;">
-                        <div id="yt-player-b"></div>
-                    </div>
-                </div>
             </div>
-            
+
             <!-- FILE D'ATTENTE & AUTOMIX -->
             <div class="module playlist-module">
                 <div class="deck-header">📂 FILE D'ATTENTE & AUTOMIX</div>

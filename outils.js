@@ -151,51 +151,69 @@ window.playSample = playSample;
     });
 })();
 
-// ---------- MIDI LEARN ----------
-const ACTIONS = [];
+// ---------- MIDI LEARN (canal par canal, absolu ou relatif) ----------
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const setFilter = (d, v) => { const el = $(`filter-${d}`); el.value = v; el.dispatchEvent(new Event('input')); };
+const setSlider = (id, v) => { $(id).value = clamp(v, 0, 1); updateMixer(); };
+const ACTIONS = []; // [id, libellé, 'b' (bouton) | 'a' (potentiomètre), action, action relative]
 DECKS.forEach(d => {
     const D = d.toUpperCase();
     ACTIONS.push([`play-${d}`, `Play ${D}`, 'b', () => $(`play-${d}`).click()], [`cue-${d}`, `Cue ${D}`, 'b', () => $(`cue-${d}`).click()],
         [`sync-${d}`, `Sync ${D}`, 'b', () => syncDeck(d)], [`loop-${d}`, `Boucle 4 temps ${D}`, 'b', () => setLoop(d, 4)],
-        [`brake-${d}`, `Brake ${D}`, 'b', () => brake(d)], [`pitch-${d}`, `Pitch ${D}`, 'a', (v) => setRate(d, -16 + v * 32)],
-        [`filter-${d}`, `Filtre ${D}`, 'a', (v) => { const el = $(`filter-${d}`); el.value = -100 + v * 200; el.dispatchEvent(new Event('input')); }]);
+        [`brake-${d}`, `Brake ${D}`, 'b', () => brake(d)],
+        [`pitch-${d}`, `Pitch ${D}`, 'a', (v) => setRate(d, -16 + v * 32), (n) => setRate(d, clamp((DJ[d].rate - 1) * 100 + n * 0.1, -16, 16))],
+        [`filter-${d}`, `Filtre ${D}`, 'a', (v) => setFilter(d, -100 + v * 200), (n) => setFilter(d, clamp(+$(`filter-${d}`).value + n * 3, -100, 100))]);
 });
-ACTIONS.push(['xfader', 'Crossfader', 'a', (v) => { $('crossfader').value = v; updateMixer(); }], ['master', 'Volume master', 'a', (v) => { $('master-volume').value = v; updateMixer(); }],
+ACTIONS.push(['xfader', 'Crossfader', 'a', (v) => setSlider('crossfader', v), (n) => setSlider('crossfader', +$('crossfader').value + n * 0.02)],
+    ['master', 'Volume master', 'a', (v) => setSlider('master-volume', v), (n) => setSlider('master-volume', +$('master-volume').value + n * 0.02)],
     ['fx', 'FX ON / OFF', 'b', () => window.toggleFx()]);
 for (let i = 0; i < 8; i++) ACTIONS.push([`pad-${i}`, `Pad sampler ${i + 1}`, 'b', () => playSample(i)]);
-let midiMap = {}; try { midiMap = JSON.parse(localStorage.getItem('midi_map') || '{}'); } catch (e) {}
+let midiMap = {}, midiMode = {};
+try { midiMap = JSON.parse(localStorage.getItem('midi_map') || '{}'); midiMode = JSON.parse(localStorage.getItem('midi_mode') || '{}'); } catch (e) {}
 let learning = null;
-const saveMap = () => localStorage.setItem('midi_map', JSON.stringify(midiMap));
+const saveMap = () => { localStorage.setItem('midi_map', JSON.stringify(midiMap)); localStorage.setItem('midi_mode', JSON.stringify(midiMode)); };
+const modeOf = (id) => midiMode[id] || (id.startsWith('pitch') ? 'rel' : 'abs');
+const fmtKey = (k) => { const m = /^([nc])(\d*):(\d+)$/.exec(k); return m ? `${m[1] === 'n' ? 'Note' : 'CC'} ${m[3]}${m[2] !== '' ? ' · canal ' + (+m[2] + 1) : ''}` : k; };
+// Encodeurs relatifs : 1..15 = +, 113..127 = − (complément à 2) ; 65..79 / 49..63 = autour de 64
+const relDelta = (v) => (v >= 1 && v <= 15) ? v : (v >= 113 && v <= 127) ? v - 128 : (v >= 65 && v <= 79) ? v - 64 : (v >= 49 && v <= 63) ? v - 64 : 0;
 function renderMidi() {
-    const sec = $('tab-midi'); sec.innerHTML = '<p class="hint" id="midi-status"></p><div id="midi-list"></div><button id="midi-clear" class="mini-btn">Tout effacer</button>';
-    $('midi-status').textContent = navigator.requestMIDIAccess ? 'Clique « Apprendre », puis bouge le bouton ou le fader de ton contrôleur.' : 'MIDI non disponible dans ce navigateur.';
+    const sec = $('tab-midi');
+    sec.innerHTML = '<p class="hint" id="midi-status"></p><p class="hint midi-last" id="midi-last">Dernier message : —</p><div id="midi-list"></div><button id="midi-clear" class="mini-btn">Tout effacer</button>';
+    $('midi-status').textContent = navigator.requestMIDIAccess ? 'Clique « Apprendre », puis appuie sur le bouton ou bouge le potentiomètre de ton contrôleur. Pour un pitch qui envoie des impulsions (+1 / −1), garde le mode REL.' : 'MIDI non disponible dans ce navigateur.';
     const list = $('midi-list');
-    ACTIONS.forEach(([id, label]) => {
+    ACTIONS.forEach(([id, label, kind]) => {
         const row = document.createElement('div'); row.className = 'midi-row';
         const key = Object.keys(midiMap).find(k => midiMap[k] === id);
         const name = document.createElement('span'); name.textContent = label;
-        const ctl = document.createElement('span'); ctl.className = 'midi-ctl'; ctl.textContent = learning === id ? '…en attente' : (key ? key.replace('n:', 'Note ').replace('c:', 'CC ') : '—');
-        const b = document.createElement('button'); b.className = 'mini-btn'; b.textContent = 'Apprendre'; b.addEventListener('click', () => { learning = id; renderMidi(); });
-        const x = document.createElement('button'); x.className = 'mini-btn'; x.textContent = '✖'; x.addEventListener('click', () => { if (key) { delete midiMap[key]; saveMap(); renderMidi(); } });
-        row.append(name, ctl, b, x); list.appendChild(row);
+        const ctl = document.createElement('span'); ctl.className = 'midi-ctl'; ctl.textContent = learning === id ? '…en attente' : (key ? fmtKey(key) : '—');
+        const mode = kind === 'a' ? mkBtn(modeOf(id).toUpperCase(), () => { midiMode[id] = modeOf(id) === 'rel' ? 'abs' : 'rel'; saveMap(); renderMidi(); }) : document.createElement('span');
+        if (kind === 'a') mode.title = 'ABS : fader (valeur directe) • REL : encodeur / impulsions';
+        row.append(name, ctl, mode, mkBtn('Apprendre', () => { learning = id; renderMidi(); }), mkBtn('✖', () => { if (key) { delete midiMap[key]; saveMap(); renderMidi(); } }));
+        list.appendChild(row);
     });
     $('midi-clear').addEventListener('click', () => { midiMap = {}; saveMap(); renderMidi(); });
 }
-renderMidi();
-function onMidi(e) {
-    const [st, d1, d2 = 0] = e.data, type = st & 0xF0;
-    if (type !== 0x90 && type !== 0x80 && type !== 0xB0) return;
-    const isNote = type !== 0xB0, key = `${isNote ? 'n' : 'c'}:${d1}`, pressed = isNote ? (type === 0x90 && d2 > 0) : d2 > 63;
+// Appelé en premier par le gestionnaire MIDI d'origine : renvoie true si le message est pris en charge ici
+window.midiIntercept = (e) => {
+    const [st, d1, d2 = 0] = e.data, type = st & 0xF0, ch = st & 0x0F;
+    if (type !== 0x90 && type !== 0x80 && type !== 0xB0) return false;
+    const isNote = type !== 0xB0, key = `${isNote ? 'n' : 'c'}${ch}:${d1}`, pressed = isNote ? (type === 0x90 && d2 > 0) : d2 > 63;
+    const last = $('midi-last'); if (last) last.textContent = `Dernier message : ${fmtKey(key)} · valeur ${d2}`;
     if (learning) {
-        if (isNote && !pressed) return;
+        if (isNote && !pressed) return true;
         Object.keys(midiMap).forEach(k => { if (midiMap[k] === learning) delete midiMap[k]; });
-        midiMap[key] = learning; saveMap(); toast(`MIDI : ${key.replace('n:', 'Note ').replace('c:', 'CC ')} assigné`); learning = null; renderMidi(); return;
+        midiMap[key] = learning; saveMap(); toast(`MIDI : ${fmtKey(key)} assigné`); learning = null; renderMidi(); return true;
     }
-    const act = ACTIONS.find(a => a[0] === midiMap[key]); if (!act) return;
-    if (act[2] === 'b') { if (pressed) act[3](); } else act[3](d2 / 127);
-}
+    const id = midiMap[key] || midiMap[`${isNote ? 'n' : 'c'}:${d1}`], act = ACTIONS.find(a => a[0] === id);
+    if (!act) return false;
+    if (act[2] === 'b') { if (pressed) act[3](); }
+    else if (modeOf(id) === 'rel' && act[4]) { const n = relDelta(d2); if (n) act[4](n); }
+    else act[3](d2 / 127);
+    return true;
+};
+renderMidi();
 if (navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(acc => {
-    const hook = () => acc.inputs.forEach(i => { i.removeEventListener('midimessage', onMidi); i.addEventListener('midimessage', onMidi); });
+    const hook = () => acc.inputs.forEach(i => { if (!i.onmidimessage) i.onmidimessage = onMIDIMessage; });
     hook(); acc.addEventListener('statechange', hook);
 }).catch(() => {});
 
