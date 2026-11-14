@@ -18,6 +18,7 @@
                 <a id="ytm-btn" class="top-btn ytm" href="https://music.youtube.com" target="_blank" rel="noopener">▶ YouTube Music</a>
                 <button id="local-btn" class="top-btn local">📁 Mes musiques</button>
                 <input type="file" id="local-files" accept="audio/*" multiple hidden />
+                <button id="tools-btn" class="top-btn">🧰 Outils</button>
                 <button id="queue-btn" class="top-btn queue-toggle">📂 File</button>
                 <button id="fs-btn" class="top-btn">⛶ Plein écran</button>
                 <button id="close-btn" class="top-btn close">✖ Fermer</button>
@@ -111,7 +112,8 @@
                     <div id="progress-fill-a" class="progress-fill"></div>
                 </div>
 
-                <div class="media-display-container">
+                <div class="wf-row"><canvas id="wf-a" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-a" class="vu" width="10" height="44"></canvas></div>
+                <div class="media-display-container" >
                     <div id="waveform-a"></div>
                     <div id="yt-player-container-a" class="yt-container" style="display: none;">
                         <div id="yt-player-a"></div>
@@ -220,7 +222,8 @@
                     <div id="progress-fill-b" class="progress-fill"></div>
                 </div>
 
-                <div class="media-display-container">
+                <div class="wf-row"><canvas id="wf-b" class="wf" title="Glisser pour se déplacer"></canvas><canvas id="vu-b" class="vu" width="10" height="44"></canvas></div>
+                <div class="media-display-container" >
                     <div id="waveform-b"></div>
                     <div id="yt-player-container-b" class="yt-container" style="display: none;">
                         <div id="yt-player-b"></div>
@@ -264,8 +267,11 @@
         </div>
     </div>
 
+    <div id="tools-drawer" class="tools-drawer"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="script.js"></script>
+    <script src="outils.js"></script>
 </body>
 </html>

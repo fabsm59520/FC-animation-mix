@@ -208,6 +208,7 @@ function loadYoutubeVideo(deckStr, player, forceId = null, forceTitle = null) {
 }
 
 // Gestion de la Playlist & Automix
+let queueFilter = '';
 let sortKey = null, sortDir = 1, bpmQueue = Promise.resolve();
 function splitTitle(t, fb) {
     const i = t.indexOf(' - ');
@@ -217,9 +218,33 @@ function isoToSec(iso) {
     const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || '') || [];
     return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
 }
-async function detectBPM(url) {
-    const buf = await (await fetch(url)).arrayBuffer();
-    const audio = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(buf);
+// Un seul décodage par fichier : BPM + profil d'ondes (graves / médiums / aigus)
+const analysisCache = new Map();
+function analyzeUrl(url) {
+    if (!analysisCache.has(url)) analysisCache.set(url, (async () => {
+        const buf = await (await fetch(url)).arrayBuffer();
+        const audio = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(buf);
+        return { bpm: bpmFromAudio(audio), peaks: computePeaks(audio), duration: audio.duration };
+    })());
+    return analysisCache.get(url);
+}
+async function detectBPM(url) { return (await analyzeUrl(url)).bpm; }
+function computePeaks(audio) {
+    const x = audio.getChannelData(0), hop = Math.round(audio.sampleRate / 100), n = Math.floor(x.length / hop), p = new Float32Array(n * 3);
+    let lp1 = 0, lp2 = 0, max = 1e-6;
+    for (let i = 0; i < n; i++) {
+        let lo = 0, mi = 0, hi = 0;
+        for (let j = 0, k = i * hop; j < hop; j++, k++) {
+            const v = x[k]; lp1 += 0.03 * (v - lp1); lp2 += 0.35 * (v - lp2);
+            lo += Math.abs(lp1); mi += Math.abs(lp2 - lp1); hi += Math.abs(v - lp2);
+        }
+        p[i * 3] = lo / hop; p[i * 3 + 1] = mi / hop; p[i * 3 + 2] = hi / hop;
+        max = Math.max(max, (lo + mi + hi) / hop);
+    }
+    for (let i = 0; i < p.length; i++) p[i] /= max;
+    return p;
+}
+function bpmFromAudio(audio) {
     const sr = audio.sampleRate, data = audio.getChannelData(0), hop = 512;
     const start = Math.floor(Math.max(0, audio.duration / 2 - 15) * sr);
     const n = Math.floor(Math.min(data.length - start, 30 * sr) / hop);
@@ -244,8 +269,9 @@ function analyzeLocal(item) {
         if (tags.artist) item.artist = tags.artist; if (tags.title) item.name = tags.title; renderPlaylist();
     }, onError: () => {} });
     const sd = item.sourceData;
+    if (sd.bpm) { item.bpm = sd.bpm; sd.bpmPromise = Promise.resolve(sd.bpm); return; }
     sd.bpmPromise = bpmQueue = bpmQueue.then(() => detectBPM(url)).catch(() => null);
-    sd.bpmPromise.then(b => { item.bpm = b; sd.bpm = b; renderPlaylist(); });
+    sd.bpmPromise.then(b => { item.bpm = b; sd.bpm = b; if (b && sd.libId && window.libUpdateBpm) libUpdateBpm(sd.libId, b); renderPlaylist(); });
 }
 function sortPlaylist(key) {
     sortDir = (sortKey === key) ? -sortDir : 1; sortKey = key;
@@ -294,6 +320,7 @@ function renderPlaylist() {
     const body = table.createTBody();
     playlist.forEach((item, index) => {
         const tr = body.insertRow(); tr.className = 'playlist-item'; tr.draggable = true;
+        if (queueFilter && !`${item.artist || ''} ${item.name}`.toLowerCase().includes(queueFilter)) tr.style.display = 'none';
         tr.addEventListener('dragstart', (e) => { dragIndex = index; e.dataTransfer.setData('text/plain', String(index)); tr.classList.add('dragging'); });
         tr.addEventListener('dragend', () => { dragIndex = null; tr.classList.remove('dragging'); });
         tr.addEventListener('dragover', (e) => { if (dragIndex !== null) { e.preventDefault(); tr.classList.add('drag-over'); } });
@@ -519,6 +546,7 @@ function initEngine() {
     if(wavesurferA.getMediaElement()) audioContext.createMediaElementSource(wavesurferA.getMediaElement()).connect(gainA);
     if(wavesurferB.getMediaElement()) audioContext.createMediaElementSource(wavesurferB.getMediaElement()).connect(gainB);
 
+    if (window.initExtras) initExtras();
     isInitialized = true;
     updateMixer(); drawSpectrum();
 }
@@ -874,6 +902,7 @@ function onTrackLoaded(d, src) {
     const s = DJ[d]; s.src = src; s.bpm = src && src.bpm ? src.bpm : null; s.loop = null; s.cues = [null, null, null, null];
     if (src) { try { s.cues = JSON.parse(localStorage.getItem(cueKey(src)) || 'null') || s.cues; } catch (e) {} }
     setRate(d, 0); renderLoop(d); renderCues(d);
+    if (window.onTrackLoadedExtra) onTrackLoadedExtra(d, src);
     if (src) (src.bpmPromise ||= detectBPM(src.url).catch(() => null)).then(b => {
         if (s.src === src && b) { src.bpm = b; if (!s.bpm) s.bpm = b; updateBpmUi(d); }
     });
